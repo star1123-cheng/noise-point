@@ -1,0 +1,23 @@
+# 機敏檔案（本專案不需要任何金鑰，仍依安全守則預先排除）
+.env
+.env.*
+*.pem
+*.key
+*credentials*.json
+*serviceAccountKey*.json
+.clasprc.json
+
+# 套件與建置產物
+node_modules/
+dist/
+
+# 課本與考卷有版權，只在本機參考出題，不可上傳
+textbooks/
+
+# 設計檢查工具的快取
+.impeccable/
+
+# 編輯器與系統暫存
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Noise Point｜要嘛安靜，要嘛算數學</title>
+    <meta name="description" content="教室音量偵測工具：太吵就跳出數學題。聲音只在這台電腦上計算音量，不錄音、不上傳。" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script defer src="js/storage.js"></script>
+    <script defer src="js/audio.js"></script>
+    <script defer src="js/detector.js"></script>
+    <script defer src="js/render.js"></script>
+    <script defer src="js/questions/core.js"></script>
+    <script defer src="js/questions/g4a.js"></script>
+    <script defer src="js/questions/g4b.js"></script>
+    <script defer src="js/app.js"></script>
+  </head>
+  <body>
+    <!-- ============ 設定畫面 ============ -->
+    <main id="screen-setup" class="screen setup">
+      <header class="brand">
+        <div>
+          <h1 class="brand-name">Noise Point</h1>
+          <p class="brand-slogan">要嘛安靜，要嘛算數學</p>
+        </div>
+        <button type="button" class="btn btn-ghost" id="btn-history">歷史紀錄</button>
+      </header>
+
+      <div class="setup-grid">
+        <section class="panel" aria-labelledby="h-time">
+          <h2 id="h-time"><span class="step">1</span>上課時間</h2>
+          <div class="chips" id="minute-chips" role="radiogroup" aria-label="倒數時間">
+            <button type="button" class="chip" data-min="10" role="radio">10 分鐘</button>
+            <button type="button" class="chip" data-min="20" role="radio">20 分鐘</button>
+            <button type="button" class="chip" data-min="40" role="radio">40 分鐘</button>
+          </div>
+          <label class="field-inline">
+            自訂
+            <input type="number" id="minutes" min="1" max="120" step="1" inputmode="numeric" />
+            分鐘
+          </label>
+        </section>
+
+        <section class="panel panel-mic" aria-labelledby="h-mic">
+          <h2 id="h-mic"><span class="step">2</span>音量門檻</h2>
+
+          <div id="mic-off">
+            <button type="button" class="btn btn-primary" id="btn-mic">啟用麥克風</button>
+            <p class="hint">聲音只在這台電腦上計算音量，不會錄音、也不會上傳。</p>
+            <p class="error" id="mic-error" role="alert" hidden></p>
+          </div>
+
+          <div id="mic-on" hidden>
+            <div class="meter meter-lg" id="setup-meter">
+              <div class="meter-fill"></div>
+              <div
+                class="meter-line"
+                role="slider"
+                tabindex="0"
+                aria-label="音量門檻"
+                aria-valuemin="5"
+                aria-valuemax="95"
+              ></div>
+            </div>
+            <p class="hint">拖曳黑色直線，或點選下面的檔位。超過直線並持續幾秒就會出題。</p>
+            <div class="chips" id="preset-chips" role="radiogroup" aria-label="音量檔位">
+              <button type="button" class="chip" data-preset="silent" role="radio">安靜</button>
+              <button type="button" class="chip" data-preset="whisper" role="radio">小聲討論</button>
+              <button type="button" class="chip" data-preset="group" role="radio">分組討論</button>
+            </div>
+            <div class="mic-tools">
+              <button type="button" class="btn btn-ghost" id="btn-calib">校正這間教室</button>
+              <label class="field-inline">
+                麥克風
+                <select id="mic-select"></select>
+              </label>
+            </div>
+            <p class="calib-status" id="calib-status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section class="panel panel-units" aria-labelledby="h-units">
+          <h2 id="h-units"><span class="step">3</span>出題範圍</h2>
+          <div class="picker-row">
+            <span class="picker-label">年級</span>
+            <div class="book-tabs" id="grade-tabs" role="tablist" aria-label="年級"></div>
+          </div>
+          <div class="picker-row">
+            <span class="picker-label">學期</span>
+            <div class="book-tabs" id="term-tabs" role="tablist" aria-label="學期"></div>
+          </div>
+          <div class="unit-tools">
+            <button type="button" class="btn btn-small" id="btn-all">這學期全選</button>
+            <button type="button" class="btn btn-small" id="btn-none">這學期全不選</button>
+            <span class="unit-count" id="unit-count"></span>
+          </div>
+          <ul class="unit-list" id="unit-list"></ul>
+        </section>
+
+        <details class="panel panel-advanced">
+          <summary>進階設定</summary>
+          <div class="advanced-grid">
+            <label>
+              出題後冷卻
+              <span><input type="number" id="cooldown" min="5" max="120" step="1" /> 秒</span>
+              <small>冷卻期間不出題，冷卻完還是吵才出下一題。</small>
+            </label>
+            <label>
+              題數上限
+              <span><input type="number" id="max-q" min="1" max="8" step="1" /> 題</span>
+              <small>超過 6 題字會變小，後排可能看不清楚。</small>
+            </label>
+            <label>
+              新題目放大顯示
+              <span><input type="number" id="popup-sec" min="3" max="30" step="1" /> 秒</span>
+              <small>時間到自動縮進題目區，點一下可提早收起。</small>
+            </label>
+          </div>
+        </details>
+      </div>
+
+      <footer class="start-bar">
+        <p class="start-reason" id="start-reason" aria-live="polite"></p>
+        <button type="button" class="btn btn-start" id="btn-start" disabled>開始上課</button>
+      </footer>
+    </main>
+
+    <!-- ============ 上課中 ============ -->
+    <main id="screen-run" class="screen run" hidden>
+      <header class="run-bar">
+        <div class="run-time">
+          <span class="run-label">剩餘時間</span>
+          <span class="run-clock" id="run-clock">20:00</span>
+        </div>
+        <div class="run-meter-wrap">
+          <div class="meter meter-sm" id="run-meter">
+            <div class="meter-fill"></div>
+            <div class="meter-line"></div>
+          </div>
+          <span class="run-status" id="run-status" aria-live="polite">偵測中</span>
+        </div>
+        <div class="run-actions">
+          <span class="run-count" id="run-count">0 / 6 題</span>
+          <button type="button" class="btn btn-bar" id="btn-pause">暫停偵測<kbd>空白鍵</kbd></button>
+          <button type="button" class="btn btn-bar" id="btn-full">全螢幕</button>
+          <button type="button" class="btn btn-bar btn-end" id="btn-end">結束</button>
+        </div>
+      </header>
+
+      <div class="paused-banner" id="paused-banner" hidden>暫停偵測中・按空白鍵繼續</div>
+
+      <section class="q-area" aria-label="題目">
+        <div class="q-empty" id="q-empty">
+          <p class="q-empty-title">保持安靜，就不會出題</p>
+          <p class="q-empty-sub">太吵的時候，題目會出現在這裡</p>
+        </div>
+        <ol class="q-grid" id="q-grid" hidden></ol>
+      </section>
+    </main>
+
+    <!-- ============ 統整頁 ============ -->
+    <main id="screen-summary" class="screen summary" hidden>
+      <header class="summary-head">
+        <div>
+          <h1 id="summary-title">這節課出了 0 題</h1>
+          <p class="summary-meta" id="summary-meta"></p>
+        </div>
+        <div class="summary-actions">
+          <button type="button" class="btn btn-primary" id="btn-answers" aria-pressed="false">顯示答案</button>
+          <button type="button" class="btn btn-ghost" id="btn-print">列印</button>
+          <button type="button" class="btn btn-ghost" id="btn-back">回到設定</button>
+        </div>
+      </header>
+      <p class="summary-empty" id="summary-empty" hidden>這節課很安靜，一題都沒有出！</p>
+      <table class="summary-table" id="summary-table">
+        <thead>
+          <tr>
+            <th scope="col">題號</th>
+            <th scope="col">題目</th>
+            <th scope="col">單元</th>
+            <th scope="col">出現時間</th>
+            <th scope="col" class="col-answer">答案</th>
+          </tr>
+        </thead>
+        <tbody id="summary-body"></tbody>
+      </table>
+    </main>
+
+    <!-- ============ 歷史紀錄 ============ -->
+    <main id="screen-history" class="screen history" hidden>
+      <header class="summary-head">
+        <div>
+          <h1>歷史紀錄</h1>
+          <p class="summary-meta">保留最近 10 次，只存在這台電腦的瀏覽器裡。</p>
+        </div>
+        <div class="summary-actions">
+          <button type="button" class="btn btn-ghost" id="btn-clear">全部清除</button>
+          <button type="button" class="btn btn-ghost" id="btn-history-back">回到設定</button>
+        </div>
+      </header>
+      <p class="summary-empty" id="history-empty" hidden>還沒有任何紀錄。</p>
+      <ul class="history-list" id="history-list"></ul>
+    </main>
+
+    <!-- 新題目彈出 -->
+    <div class="popup" id="popup" hidden>
+      <div class="popup-card" role="dialog" aria-modal="true" aria-labelledby="popup-no">
+        <p class="popup-no" id="popup-no">第 1 題</p>
+        <p class="popup-q" id="popup-q"></p>
+        <div class="popup-progress"><span id="popup-bar"></span></div>
+        <p class="popup-hint">點一下收起</p>
+      </div>
+    </div>
+
+    <!-- 確認視窗 -->
+    <dialog class="confirm" id="confirm">
+      <form method="dialog">
+        <p class="confirm-text" id="confirm-text"></p>
+        <div class="confirm-actions">
+          <button type="submit" class="btn btn-ghost" value="cancel">取消</button>
+          <button type="submit" class="btn btn-primary" value="ok" id="confirm-ok">確定</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- 著作權浮水印（右下角，不攔截點擊；字級隨螢幕寬度縮放，投影時比例一致） -->
+    <script src="js/watermark.js" defer data-size="clamp(12px, 0.9vw, 22px)"></script>
+  </body>
+</html>
