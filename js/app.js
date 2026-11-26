@@ -41,8 +41,7 @@
   }
 
   function usableUnit(id) {
-    const unit = NP.bank.unit(id);
-    return Boolean(unit && unit.gens.length);
+    return NP.bank.usable(NP.bank.unit(id));
   }
 
   function sanitize(raw) {
@@ -471,7 +470,7 @@
     list.replaceChildren();
     if (!book) return;
     book.units.forEach((unit) => {
-      const usable = unit.gens.length > 0;
+      const usable = NP.bank.usable(unit);
       const li = R.el('li', usable ? '' : 'is-disabled');
       const label = R.el('label');
       const box = document.createElement('input');
@@ -508,7 +507,7 @@
     if (!book) return;
     const set = new Set(settings.units);
     book.units.forEach((u) => {
-      if (!u.gens.length) return;
+      if (!NP.bank.usable(u)) return;
       if (on) set.add(u.id);
       else set.delete(u.id);
     });
@@ -653,16 +652,23 @@
       .querySelectorAll('.q-card')
       .forEach((card) => {
         const text = card.querySelector('.q-text');
+        const hasImg = Boolean(text.querySelector('.q-img'));
         let px = size;
+        let fit = 1; // 題目圖片的縮放比例（學習扶助的原題有圖）
+        card.style.setProperty('--card-w', card.clientWidth + 'px');
+        card.style.setProperty('--card-h', card.clientHeight + 'px');
         text.style.fontSize = px + 'px';
+        card.style.setProperty('--fit', fit);
         let guard = 0;
         while (
           (text.scrollHeight > card.clientHeight - 8 || text.scrollWidth > card.clientWidth) &&
-          px > MIN_FONT_PX &&
-          guard < 30
+          (px > MIN_FONT_PX || (hasImg && fit > 0.2)) &&
+          guard < 40
         ) {
           px = Math.max(MIN_FONT_PX, Math.floor(px * 0.92));
+          fit *= 0.92;
           text.style.fontSize = px + 'px';
+          card.style.setProperty('--fit', fit);
           guard += 1;
         }
       });
@@ -671,14 +677,29 @@
   function showPopup(item) {
     closePopup();
     $('popup-no').textContent = '第 ' + item.no + ' 題';
-    R.tokens($('popup-q'), item.q);
+    const text = $('popup-q');
+    R.tokens(text, item.q);
     const bar = $('popup-bar');
     bar.style.animation = 'none';
     void bar.offsetWidth; // 重新開始倒數動畫
     bar.style.animation = '';
     bar.style.animationDuration = run.settings.popupSec + 's';
     $('popup').hidden = false;
+    fitPopup(text);
     run.popupTimer = setTimeout(closePopup, run.settings.popupSec * 1000);
+  }
+
+  /** 學習扶助的題目較長（有選項、圖片），放大顯示放不下時逐步縮小字級 */
+  function fitPopup(text) {
+    const card = text.closest('.popup-card');
+    text.style.fontSize = '';
+    let px = parseFloat(getComputedStyle(text).fontSize);
+    let guard = 0;
+    while (card.scrollHeight > card.clientHeight + 1 && px > MIN_FONT_PX && guard < 30) {
+      px = Math.max(MIN_FONT_PX, Math.floor(px * 0.92));
+      text.style.fontSize = px + 'px';
+      guard += 1;
+    }
   }
 
   function closePopup() {

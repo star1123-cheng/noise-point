@@ -693,7 +693,8 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.2em 1em 0.8em 2.6em;
+  /* 左側留白跟著題號大小，長題目的第一個字才不會被題號擋住 */
+  padding: 1.2em 1em 0.8em max(2.6em, calc(var(--q-size, 40px) * 1.55 + 1rem));
   background: var(--panel);
   border: 3px solid var(--ink);
   border-radius: var(--radius);
@@ -760,6 +761,72 @@ kbd {
   padding: 0 0.18em;
 }
 
+/* ---------- 學習扶助：題目圖片與選擇題選項 ---------- */
+/* 圖片大小跟著字級縮放，卡片縮字時圖片一起變小 */
+.q-img {
+  display: block;
+  width: min(100%, calc(5em * var(--ratio, 1.5)));
+  height: auto;
+  margin: 0.25em auto;
+}
+
+/* 行內小圖示依原圖高度等比例縮放（原圖 32 像素高 ≈ 1 個字高），保留大小差異 */
+.q-img.is-inline {
+  display: inline-block;
+  width: min(100%, calc(var(--h, 32) / 32 * var(--ratio, 1) * 1em));
+  margin: 0 0.1em;
+  vertical-align: middle;
+}
+
+.q-opts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.15em 0.9em;
+  margin-top: 0.35em;
+  font-size: 0.92em;
+}
+
+.q-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+
+.q-opt-no {
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.q-opt .q-img {
+  display: inline-block;
+  width: min(100%, calc(3em * var(--ratio, 1.5)));
+  margin: 0;
+}
+
+/*
+ * 題目卡片與放大視窗：統計圖等大圖依卡片（畫面）高度決定大小。
+ * app.js 的 fitCards 會量好卡片寬高（--card-w、--card-h），
+ * 放不下時調小 --fit，圖片和文字一起縮。
+ */
+.q-card .q-img:not(.is-inline) {
+  width: min(100%, calc(var(--card-h, 300px) * 0.45 * var(--fit, 1) * var(--ratio, 1.5)));
+}
+
+.q-card .q-opt .q-img:not(.is-inline) {
+  width: calc(var(--card-h, 300px) * 0.22 * var(--fit, 1) * var(--ratio, 1.5));
+  max-width: calc(var(--card-w, 400px) * 0.4);
+}
+
+.popup-q .q-img:not(.is-inline) {
+  width: min(100%, calc(34vh * var(--ratio, 1.5)));
+}
+
+.popup-q .q-opt .q-img:not(.is-inline) {
+  width: calc(14vh * var(--ratio, 1.5));
+  max-width: 40vw;
+}
+
 /* ---------- 新題目彈出 ---------- */
 .popup {
   position: fixed;
@@ -775,6 +842,7 @@ kbd {
 .popup-card {
   width: min(94vw, 1600px);
   max-height: 92vh;
+  overflow: hidden;
   padding: 4vmin 5vmin 3vmin;
   background: var(--panel);
   border: 6px solid var(--accent);
@@ -929,6 +997,15 @@ kbd {
 .summary-table .td-q {
   font-weight: 700;
   font-size: 1.3rem;
+}
+
+.summary-table .td-q .q-img:not(.is-inline) {
+  width: min(100%, calc(8em * var(--ratio, 1.5)));
+  margin: 0.25em 0;
+}
+
+.summary-table .td-q .q-opts {
+  justify-content: flex-start;
 }
 
 .summary-table .td-unit,

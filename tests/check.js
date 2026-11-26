@@ -12,7 +12,7 @@ const root = path.join(__dirname, '..');
 const context = { window: {}, Math, Number, String, JSON, Set, Object, Array, console };
 context.window = context;
 vm.createContext(context);
-const BOOK_FILES = ['g3a', 'g3b', 'g4a', 'g4b', 'g5a', 'g5b', 'g6a', 'g6b'].map((id) => 'js/questions/' + id + '.js');
+const BOOK_FILES = ['g3a', 'g3b', 'g4a', 'g4b', 'g5a', 'g5b', 'g6a', 'g6b', 'xuefu-data', 'xuefu'].map((id) => 'js/questions/' + id + '.js');
 ['js/detector.js', 'js/questions/core.js', ...BOOK_FILES].forEach((file) => {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 });
@@ -63,8 +63,115 @@ function checkReduced(tokens) {
 }
 
 const samples = [];
+
+/* ---------------- 學習扶助單元（選擇題） ---------------- */
+
+const CIRC = '①②③④';
+
+/** 片段轉文字（含圖片、選項），比對選項是否重複用 */
+function flat(tokens) {
+  return tokens
+    .map((t) => {
+      if (t && typeof t === 'object' && Array.isArray(t.f)) return '[' + t.f.join(',') + ']';
+      if (t && typeof t === 'object' && t.img) return '<' + t.img + '>';
+      if (t && typeof t === 'object' && Array.isArray(t.opts)) return '{' + t.opts.map(flat).join('|') + '}';
+      return String(t);
+    })
+    .join('');
+}
+
+/** 檢查片段格式；strict 為 false 時允許原題裡刻意寫錯的分數（例如誘答的 2又7/4） */
+function checkRich(tokens, strict) {
+  if (!Array.isArray(tokens) || !tokens.length) return 'empty';
+  for (const t of tokens) {
+    if (typeof t === 'string') continue;
+    if (!t || typeof t !== 'object') return 'non-string token';
+    if (Array.isArray(t.f)) {
+      const [w, n, d] = t.f;
+      if (typeof w !== 'number' || w < 0) return 'bad whole ' + w;
+      if (typeof n === 'number' && n <= 0) return 'bad numerator ' + n;
+      if (typeof d === 'number' && d <= 1) return 'bad denominator ' + d;
+      if (strict && w > 0 && n >= d) return 'mixed not proper';
+    } else if (t.img) {
+      if (!fs.existsSync(path.join(root, t.img))) return 'missing image ' + t.img;
+      if (!(t.w > 0 && t.h > 0)) return 'image without size ' + t.img;
+    } else if (Array.isArray(t.opts)) {
+      if (t.opts.length !== 4) return 'options ' + t.opts.length;
+      for (const o of t.opts) {
+        const p = o.length ? checkRich(o, strict) : 'empty option';
+        if (p) return 'option: ' + p;
+      }
+      const texts = t.opts.map(flat);
+      if (new Set(texts).size !== 4) return 'duplicate options ' + texts.join(' | ');
+    } else {
+      return 'unknown token ' + JSON.stringify(t);
+    }
+  }
+  // 圖片檔名（例如 g3-mA-1.png）不算進文字，避免被當成負數
+  const text = flat(tokens).replace(/<[^>]*>/g, '<圖>');
+  if (/NaN|undefined|Infinity|null|\[圖/.test(text)) return 'invalid text';
+  if (/(^|[^\d.])-\d/.test(text)) return 'negative number';
+  // 原題本來就有 0.98176 這種長小數，只檢查電腦出題
+  if (strict && /\d\.\d{5,}/.test(text)) return 'float noise';
+  return '';
+}
+
+/** 選擇題：答案的代號要對得上選項內容 */
+function checkChoice(r, strict) {
+  const opts = r.q[r.q.length - 1];
+  if (!opts || !Array.isArray(opts.opts)) return 'last token is not options';
+  const p = checkRich(r.q, strict) || checkRich(r.a, strict);
+  if (p) return p;
+  const at = CIRC.indexOf(String(r.a[0]).trim()[0]);
+  if (at < 0) return 'answer has no option number';
+  if (!strict) return '';
+  const body = flat(r.a.slice(1)).trim();
+  if (body !== flat(opts.opts[at]).trim()) return 'answer does not match option ' + CIRC[at];
+  return '';
+}
+
+let xfFixed = 0;
+let xfGen = 0;
+NP.bank.books.forEach((book) => {
+  book.units
+    .filter((u) => u.xuefu)
+    .forEach((unit) => {
+      if (unit.fixed.length !== 150) errors.push(unit.id + ': 原題應有 150 題，實際 ' + unit.fixed.length);
+      unit.fixed.forEach((r, i) => {
+        xfFixed += 1;
+        const p = checkChoice(r, false);
+        if (p) errors.push(`${unit.id} 原題 ${i + 1}: ${p}`);
+      });
+      unit.gens.forEach((gen, gi) => {
+        const seen = new Set();
+        for (let i = 0; i < RUNS; i++) {
+          let r;
+          try {
+            r = gen(H);
+          } catch (err) {
+            errors.push(`${unit.id} 電腦出題 ${gi}: 出題失敗 ${err.message}`);
+            break;
+          }
+          xfGen += 1;
+          // 5、6 年級正確答案要是最簡分數；考擴分的題目（raw）除外
+          const p =
+            checkChoice(r, true) ||
+            (book.grade >= 5 && !r.raw ? checkReduced(r.a.filter((t) => t && typeof t === 'object' && Array.isArray(t.f))) : '');
+          if (p) {
+            errors.push(`${unit.id} 電腦出題 ${gi}: ${p} | ${flat(r.q)} => ${flat(r.a)}`);
+            break;
+          }
+          seen.add(flat(r.q));
+          if (i < 1) samples.push(`${book.label} 學習扶助 規則${gi}｜${flat(r.q)}  →  ${flat(r.a)}`);
+        }
+        if (seen.size < 5) errors.push(`${unit.id} 電腦出題 ${gi}: 只有 ${seen.size} 種題目`);
+      });
+    });
+});
+
 NP.bank.books.forEach((book) => {
   book.units.forEach((unit) => {
+    if (unit.xuefu) return;
     unit.gens.forEach((gen, gi) => {
       for (let i = 0; i < RUNS; i++) {
         const r = gen(H);
@@ -136,6 +243,7 @@ hits = simulate([[70, 600]], { maxQuestions: 6 });
 expect('cap at maxQuestions', hits.length === 6, hits.length);
 
 console.log('出題規則檢查：' + total + ' 題');
+console.log('學習扶助：原題 ' + xfFixed + ' 題，電腦出題 ' + xfGen + ' 題');
 console.log('\n範例題目：');
 samples.forEach((s) => console.log('  ' + s));
 if (errors.length) {

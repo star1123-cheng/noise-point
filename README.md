@@ -43,6 +43,15 @@
 | 6 上 | 9 個單元可出題 |
 | 6 下 | 6 個單元可出題（第 6 單元只出圓形圖的計算題，不出畫圖與可能性） |
 
+3～6 年級下學期的最後一個單元是「**學習扶助**」（3 下第 10、4 下第 11、5 下第 11、6 下第 7 單元），全部是四選一選擇題：
+
+- 一半機率抽**原題**：每個年級 150 題（111～115 年考古題＋模擬卷 A），題目附原圖。統整頁的答案後面會註明出處，例如「③ 9/8 盒　［113 年第 8 題］」。
+- 一半機率由**電腦出題**：依 [docs/學習扶助命題原則.md](docs/學習扶助命題原則.md) 寫成的出題規則，數字隨機產生，錯的選項來自學生常見錯誤。
+- 原題來源：[學扶數學](https://teacher-liujikan.github.io/xuefu/)。考古題著作權屬教育部國民及學前教育署；模擬卷 A 為原網站作者原創，僅供教學使用，請勿商用。
+- 原題資料 `js/questions/xuefu-data.js` 與圖片 `assets/xuefu/` 由 `tools/xuefu_build.py` 產生。
+
+一般單元：
+
 - 題型參考該冊的月考卷與課本，數字由程式隨機產生，不收錄原題。
 - 3、4 年級尚未學約分，分數答案不約分（與考卷一致）。
 - 5、6 年級分數答案寫成最簡分數（5 年級考卷也接受未約分的寫法）；6 年級圓周率用 3.14。
@@ -65,6 +74,11 @@ js/render.js           題目顯示（直式分數）
 js/storage.js          本機儲存
 js/questions/core.js   題庫核心（隨機出題、避免重複）
 js/questions/g3a.js    3 上出題規則（g3b 為 3 下，以此類推到 g6b）
+js/questions/xuefu.js  學習扶助單元：電腦出題規則與註冊
+js/questions/xuefu-data.js  學習扶助原題（由 tools/xuefu_build.py 產生）
+assets/xuefu/          學習扶助原題的圖片
+docs/學習扶助命題原則.md   學習扶助的命題原則（電腦出題依據）
+tools/xuefu_build.py   把學扶數學網站的題目轉成 Noise-Point 格式
 js/watermark.js        著作權浮水印
 tests/check.js         題庫與判定規則自我檢查（node tests/check.js）
 textbooks/             課本與考卷（有版權，已排除於 Git 之外）
