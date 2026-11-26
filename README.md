@@ -34,18 +34,24 @@
 
 | 冊別 | 狀態 |
 |---|---|
+| 3 上 | 9 個單元可出題 |
+| 3 下 | 8 個單元可出題（第 9 單元「統計表」需要看表，不出題） |
 | 4 上 | 9 個單元可出題（第 10 單元「統計圖」需要看圖，不出題） |
 | 4 下 | 10 個單元可出題 |
-| 5 上、5 下、6 上、6 下 | 尚未建立 |
+| 5 上 | 10 個單元可出題（第 7 單元「線對稱圖形」只出對稱軸條數，題型較少） |
+| 5 下 | 10 個單元可出題（第 5 單元只出大數，不出折線圖） |
+| 6 上 | 9 個單元可出題 |
+| 6 下 | 6 個單元可出題（第 6 單元只出圓形圖的計算題，不出畫圖與可能性） |
 
 - 題型參考該冊的月考卷與課本，數字由程式隨機產生，不收錄原題。
-- 4 年級尚未學約分，分數答案不約分（與考卷一致）。
+- 3、4 年級尚未學約分，分數答案不約分（與考卷一致）。
+- 5、6 年級分數答案寫成最簡分數（5 年級考卷也接受未約分的寫法）；6 年級圓周率用 3.14。
 
-### 新增年級
+### 新增冊別
 
-1. 在 `js/questions/` 新增一個檔案（例如 `g5a.js`），照 `g4a.js` 的格式註冊冊別與單元。
-2. 在 `index.html` 的 `g4b.js` 後面加上 `<script defer src="js/questions/g5a.js"></script>`。
-3. 執行 `node tests/check.js`，確認每個出題規則跑 3,000 次都沒有錯誤。
+1. 在 `js/questions/` 新增一個檔案（例如 `g2a.js`），照 `g4a.js` 的格式註冊冊別與單元。
+2. 在 `index.html` 依年級順序加上 `<script defer src="js/questions/g2a.js"></script>`，並在 `js/app.js` 的 `GRADES` 加上年級。
+3. 在 `tests/check.js` 的 `BOOK_FILES` 加上冊別代號，執行 `node tests/check.js`，確認每個出題規則跑 3,000 次都沒有錯誤。
 
 ## 檔案結構
 
@@ -58,8 +64,7 @@ js/detector.js         「太吵判定」規則
 js/render.js           題目顯示（直式分數）
 js/storage.js          本機儲存
 js/questions/core.js   題庫核心（隨機出題、避免重複）
-js/questions/g4a.js    4 上出題規則
-js/questions/g4b.js    4 下出題規則
+js/questions/g3a.js    3 上出題規則（g3b 為 3 下，以此類推到 g6b）
 js/watermark.js        著作權浮水印
 tests/check.js         題庫與判定規則自我檢查（node tests/check.js）
 textbooks/             課本與考卷（有版權，已排除於 Git 之外）

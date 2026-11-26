@@ -35,6 +35,27 @@
     dec(value, digits) {
       return Number(value.toFixed(digits === undefined ? 6 : digits));
     },
+    /** 約分：回傳 [分子, 分母] */
+    reduce(num, den) {
+      const g = H.gcd(num, den);
+      return [num / g, den / g];
+    },
+    /** 5、6 年級的分數答案：先約成最簡分數，再寫成整數、真分數或帶分數 */
+    frac(num, den) {
+      const [n, d] = H.reduce(num, den);
+      if (d === 1) return String(n);
+      if (n > d) return H.f(Math.floor(n / d), n % d, d);
+      return H.f(0, n, d);
+    },
+    /** 從清單隨機挑 k 個不重複的項目 */
+    sample(list, k) {
+      const copy = list.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy.slice(0, k);
+    },
   };
 
   const books = [];

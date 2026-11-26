@@ -12,7 +12,8 @@ const root = path.join(__dirname, '..');
 const context = { window: {}, Math, Number, String, JSON, Set, Object, Array, console };
 context.window = context;
 vm.createContext(context);
-['js/detector.js', 'js/questions/core.js', 'js/questions/g4a.js', 'js/questions/g4b.js'].forEach((file) => {
+const BOOK_FILES = ['g3a', 'g3b', 'g4a', 'g4b', 'g5a', 'g5b', 'g6a', 'g6b'].map((id) => 'js/questions/' + id + '.js');
+['js/detector.js', 'js/questions/core.js', ...BOOK_FILES].forEach((file) => {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 });
 
@@ -46,7 +47,18 @@ function checkTokens(where, tokens) {
   if (/NaN|undefined|Infinity|null/.test(text)) return 'invalid text';
   if (/－\s*\d/.test(text) && where === 'a') return 'negative answer';
   if (/(^|[^\d.])-\d/.test(text)) return 'negative number';
-  if (/\d\.\d{3,}/.test(text)) return 'float noise';
+  // 5 下有小數乘小數，答案最多 4 位小數；超過就是浮點誤差（例如 0.30000000000000004）
+  if (/\d\.\d{5,}/.test(text)) return 'float noise';
+  return '';
+}
+
+/** 5、6 年級的分數答案要是最簡分數（擴分、通分單元除外） */
+function checkReduced(tokens) {
+  for (const t of tokens) {
+    if (t && typeof t === 'object' && typeof t.f[1] === 'number' && typeof t.f[2] === 'number') {
+      if (NP.bank.H.gcd(t.f[1], t.f[2]) !== 1) return 'not reduced ' + t.f.join(',');
+    }
+  }
   return '';
 }
 
@@ -57,7 +69,10 @@ NP.bank.books.forEach((book) => {
       for (let i = 0; i < RUNS; i++) {
         const r = gen(H);
         total += 1;
-        const problem = checkTokens('q', r.q) || checkTokens('a', r.a);
+        const problem =
+          checkTokens('q', r.q) ||
+          checkTokens('a', r.a) ||
+          (book.grade >= 5 && !unit.raw ? checkReduced(r.a) || checkReduced(r.q) : '');
         if (problem) {
           errors.push(`${unit.id} gen${gi}: ${problem} | ${tokenText(r.q)} => ${tokenText(r.a)}`);
           break;
